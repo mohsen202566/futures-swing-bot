@@ -81,6 +81,13 @@ class Simple4HStrategy:
     def __init__(self) -> None:
         self.min_score = float(config.SIGNAL_SCORE_THRESHOLD)
         self.strong_score = float(config.STRONG_SCORE_THRESHOLD)
+        self.last_reject_symbol = ""
+        self.last_reject_reason = ""
+
+    def _reject(self, symbol: str, reason: str) -> None:
+        self.last_reject_symbol = str(symbol or "").upper()
+        self.last_reject_reason = str(reason or "بدون دلیل مشخص")
+        return None
 
     def analyze(
         self,
@@ -94,6 +101,8 @@ class Simple4HStrategy:
         toobit_symbol: str | None = None,
         round_trip_fee_usdt: float = config.ROUND_TRIP_FEE_USDT,
     ) -> SignalPlan | None:
+        self.last_reject_symbol = str(symbol or "").upper()
+        self.last_reject_reason = ""
         s4h = snapshot(candles_4h, swing_lookback=config.SWING_LOOKBACK_4H, slope_lookback=config.EMA_SLOPE_LOOKBACK)
         s1h = snapshot(candles_1h, swing_lookback=config.SWING_LOOKBACK_1H, slope_lookback=config.EMA_SLOPE_LOOKBACK)
         s1d = None
@@ -102,41 +111,41 @@ class Simple4HStrategy:
 
         d4 = self._direction_4h(s4h)
         if d4.direction is None:
-            return None
+            return self._reject(symbol, "رد شد: روند 4H واضح نیست")
         direction: Direction = d4.direction
 
         d1d = self._direction_1d(s1d) if s1d is not None else DirectionScore(None, 0.0, tuple())
         if d1d.direction is not None and d1d.direction != direction:
-            return None
+            return self._reject(symbol, f"رد شد: 1D خلاف 4H است | 1D={d1d.direction} | 4H={direction}")
 
         reject_reason = self._hard_reject_reason(direction, s4h, s1h, candles_4h, candles_1h)
         if reject_reason:
-            return None
+            return self._reject(symbol, f"رد شد: {reject_reason}")
 
         entry = s1h.close  # ورود با قیمت آخرین کندل 1H؛ ساختار/استاپ همچنان 4H است.
         sl = self._make_sl_4h(direction, s4h, entry)
         if sl <= 0 or sl == entry:
-            return None
+            return self._reject(symbol, "رد شد: استاپ 4H نامعتبر")
 
         risk = entry - sl if direction == "LONG" else sl - entry
         if risk <= 0 or s4h.atr <= 0 or entry <= 0:
-            return None
+            return self._reject(symbol, "رد شد: ریسک، ATR یا Entry نامعتبر")
 
         risk_atr = risk / s4h.atr
         if risk_atr < float(config.MIN_4H_RISK_ATR):
-            return None
+            return self._reject(symbol, f"رد شد: استاپ 4H خیلی نزدیک است | risk={risk_atr:.2f} ATR")
         if risk_atr > float(config.MAX_4H_RISK_ATR):
-            return None
+            return self._reject(symbol, f"رد شد: استاپ 4H خیلی بزرگ است | risk={risk_atr:.2f} ATR")
 
         sl_pct = risk / entry
         if sl_pct < float(config.MIN_4H_SL_PCT):
-            return None
+            return self._reject(symbol, f"رد شد: فاصله SL خیلی کم است | SL={sl_pct * 100:.2f}%")
         if sl_pct > float(config.MAX_4H_SL_PCT):
-            return None
+            return self._reject(symbol, f"رد شد: فاصله SL خیلی زیاد است | SL={sl_pct * 100:.2f}%")
 
         score, reasons = self._score(direction, s4h, s1h, d1d, candles_4h, candles_1h, risk_atr)
         if score < self.min_score:
-            return None
+            return self._reject(symbol, f"رد شد: امتیاز پایین است | score={score:.1f}/{self.min_score:.0f}")
 
         rr = float(config.RR_NORMAL)  # نسخه اول: ثابت 1.5 برای کنترل وین‌ریت و خروج واقع‌بینانه.
         strength = "قوی" if score >= self.strong_score else "معمولی"

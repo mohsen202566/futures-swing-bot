@@ -313,6 +313,22 @@ class Storage:
         self.conn.execute("DELETE FROM coin_errors WHERE symbol=?", (symbol.upper(),))
         self.conn.commit()
 
+
+    def recent_rejections_text(self, limit: int = 20) -> str:
+        rows = self.conn.execute(
+            "SELECT detail, created_at FROM monitor_events WHERE event_type='REJECT' ORDER BY id DESC LIMIT ?",
+            (max(1, min(int(limit), 50)),),
+        ).fetchall()
+        if not rows:
+            return "هنوز دلیل رد شدن ثبت نشده."
+        lines = ["📋 آخرین رد شدن‌ها"]
+        for row in rows:
+            created = int(row["created_at"] or 0)
+            when = time.strftime("%H:%M:%S", time.localtime(created)) if created else "--:--:--"
+            detail = str(row["detail"] or "")
+            lines.append(f"{when} | {detail}")
+        return "\n".join(lines)
+
     def recent_open_positions_text(self) -> str:
         rows = self.open_signals()
         if not rows:

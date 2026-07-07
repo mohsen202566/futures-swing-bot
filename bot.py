@@ -106,6 +106,7 @@ class Crypto4HBot:
                 plan = self._analyze_symbol(symbol)
                 self.safety.clear_coin_error(symbol)
                 if plan is None:
+                    self._record_reject(symbol, getattr(self.strategy, "last_reject_reason", "بدون سیگنال معتبر"))
                     continue
                 found += 1
                 self._handle_plan(plan)
@@ -134,6 +135,13 @@ class Crypto4HBot:
             toobit_symbol=symbol.upper(),
             round_trip_fee_usdt=float(config.ROUND_TRIP_FEE_USDT),
         )
+
+    def _record_reject(self, symbol: str, reason: str) -> None:
+        reason = str(reason or "بدون سیگنال معتبر")
+        detail = f"{symbol}: {reason}"
+        logger.info("رد شد | %s", detail)
+        self.storage.runtime_set("last_reject", detail)
+        self.storage.add_monitor_event(0, "REJECT", None, None, None, detail[:500])
 
     def _handle_plan(self, plan: SignalPlan) -> None:
         settings = self.storage.settings()
@@ -291,11 +299,13 @@ class Crypto4HBot:
 
         if t == "قوانین":
             return render_rules()
+        if t in {"ردها", "ردی‌ها", "ردی ها", "رد شدن‌ها", "رد شدن ها", "دلایل رد", "دلیل رد"}:
+            return self.storage.recent_rejections_text()
         if t == "اسکن":
             before = safe_int(self.storage.runtime_get("last_scan_found", 0), 0)
             self.scan_once(force=True)
             after = safe_int(self.storage.runtime_get("last_scan_found", before), 0)
-            return f"✅ اسکن دستی انجام شد. سیگنال‌های جدید این چرخه: {after}"
+            return f"✅ اسکن دستی انجام شد. سیگنال‌های جدید این چرخه: {after}\nبرای دیدن دلایل رد بنویس: ردها"
         if t in {"پوزیشن", "پوزیشن‌ها", "پوزیشن ها"}:
             return self.storage.recent_open_positions_text()
         if t in {"کوین‌ها", "کوین ها", "ارزها", "ارزهای فعال"}:
@@ -339,6 +349,7 @@ class Crypto4HBot:
             "پوزیشن",
             "کوین‌ها",
             "قوانین",
+            "ردها",
             "حذف آمار | حذف آمار تایید",
         ])
 
