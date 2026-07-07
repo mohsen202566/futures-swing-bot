@@ -13,7 +13,7 @@ logging.basicConfig(
     level=getattr(logging, config.LOG_LEVEL.upper(), logging.INFO),
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
-logger = logging.getLogger("crypto_1h_bot")
+logger = logging.getLogger("crypto_4h_bot")
 
 
 def safe_float(value: Any, default: float = 0.0) -> float:

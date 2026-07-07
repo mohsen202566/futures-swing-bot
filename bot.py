@@ -117,9 +117,10 @@ class Crypto4HBot:
 
     def _analyze_symbol(self, symbol: str) -> SignalPlan | None:
         settings = self.storage.settings()
-        toobit_symbol = self._resolve_toobit_symbol(symbol)
-        if not toobit_symbol:
-            return None
+
+        # تحلیل و ساخت سیگنال فقط از OKX انجام می‌شود.
+        # اینجا عمداً هیچ درخواست Toobit نمی‌زنیم؛ چون Toobit فقط برای اجرای Real است.
+        # اعتبارسنجی نماد Toobit فقط داخل _open_real_or_fallback و لحظه ارسال سفارش انجام می‌شود.
         candles_1d = self.okx.get_candles(symbol, "1D", config.OKX_CANDLE_LIMIT)
         candles_4h = self.okx.get_candles(symbol, "4H", config.OKX_CANDLE_LIMIT)
         candles_1h = self.okx.get_candles(symbol, "1H", config.OKX_CANDLE_LIMIT)
@@ -130,7 +131,7 @@ class Crypto4HBot:
             candles_1d,
             margin_usdt=float(settings["trade_dollar_usdt"]),
             leverage=int(settings["leverage"]),
-            toobit_symbol=toobit_symbol,
+            toobit_symbol=symbol.upper(),
             round_trip_fee_usdt=float(config.ROUND_TRIP_FEE_USDT),
         )
 
