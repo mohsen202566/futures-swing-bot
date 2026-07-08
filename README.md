@@ -12,12 +12,32 @@
 
 ## اجرا
 
+ربات فایل‌های `.env`، `env`، `config.env` یا `bot.env` را از ریشه پروژه خودش می‌خواند. مقدارها را داخل یکی از این فایل‌ها بگذارید، ولی آن فایل را داخل GitHub عمومی نگذارید.
+
+نام متغیرهای سازگار با تنظیمات فعلی:
+
 ```bash
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_CHAT_ID=1055122209
+OWNER_ID=1055122209
+TOOBIT_API_KEY=...
+TOOBIT_API_SECRET=...
+DEFAULT_TRADE_ENABLED=0
+DEFAULT_TRADE_DOLLAR=10
+DEFAULT_LEVERAGE=10
+DEFAULT_MAX_POSITIONS=3
+ROUND_TRIP_FEE_USDT=0.05
+BOT_NAME=Crypto 4H Trend Pullback Toobit Bot
+BOT_DATA_DIR=data
+BOT_DB_PATH=data/crypto_4h_trend_pullback.sqlite3
+```
+
+اجرای ربات:
+
+```bash
+cd /opt/crypto_4h_bot
+source venv/bin/activate
 pip install -r requirements.txt
-export TELEGRAM_BOT_TOKEN="..."
-export TELEGRAM_CHAT_ID="123456"
-export TOOBIT_API_KEY="..."
-export TOOBIT_API_SECRET="..."
 python main.py
 ```
 
